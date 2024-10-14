@@ -26,8 +26,6 @@ Error PublicNodeClient::Init(const config::IAMConfig& cfg, CertProviderItf& cert
 
     mUrl = publicServer ? cfg.mIAMPublicServerURL : cfg.mIAMProtectedServerURL;
 
-    mPublicServer = publicServer;
-
     return ErrorEnum::eNone;
 }
 

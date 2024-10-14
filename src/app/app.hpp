@@ -72,8 +72,7 @@ private:
     aos::mp::communication::Socket mTransport;
 #endif
     aos::mp::communication::CommunicationManager mCommunicationManager;
-    aos::mp::communication::IAMConnection        mIAMPublicConnection;
-    aos::mp::communication::IAMConnection        mIAMProtectedConnection;
+    aos::mp::communication::IAMConnection        mIAMConnection;
     aos::mp::communication::CMConnection         mCMConnection;
 };
 

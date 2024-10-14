@@ -71,19 +71,11 @@ public:
      *
      * @return Public handler.
      */
-    communication::HandlerItf& GetPublicHandler() { return mPublicNodeClient.value(); }
-
-    /**
-     * Gets protected handler.
-     *
-     * @return Protected handler.
-     */
-    communication::HandlerItf& GetProtectedHandler() { return mProtectedNodeClient.value(); }
+    communication::HandlerItf& GetPublicNodeClient() { return mPublicNodeClient.value(); }
 
 private:
     std::optional<PublicServiceHandler> mPublicServiceHandler;
     std::optional<PublicNodeClient>     mPublicNodeClient;
-    std::optional<PublicNodeClient>     mProtectedNodeClient;
 };
 
 } // namespace aos::mp::iamclient

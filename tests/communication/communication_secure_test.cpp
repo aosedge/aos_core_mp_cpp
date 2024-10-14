@@ -219,8 +219,7 @@ protected:
         mPipe1->Close();
         mPipe2->Close();
         mCommManager->Close();
-        mIAMOpenConnection.Close();
-        mIAMSecureConnection.Close();
+        mIAMConnection.Close();
         mCMConnection.Close();
         mIAMSecurePipe->Close();
         mCMSecurePipe->Close();
@@ -254,12 +253,10 @@ protected:
     std::optional<SecureClientChannel> mIAMSecurePipe;
     std::optional<SecureClientChannel> mCMSecurePipe;
     std::optional<CommManager>         mCommManagerClient;
-    Handler                            IAMOpenHandler {};
     Handler                            IAMSecureHandler {};
     Handler                            CMHandler {};
 
-    IAMConnection mIAMOpenConnection {};
-    IAMConnection mIAMSecureConnection {};
+    IAMConnection mIAMConnection {};
     CMConnection  mCMConnection {};
 
     std::string mTmpDir {"tmp"};
@@ -280,11 +277,8 @@ TEST_F(CommunicationSecureManagerTest, TestSecureChannel)
     auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
-    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
-        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    err = mIAMConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager, &mCertProvider.value(),
+        mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
@@ -334,11 +328,8 @@ TEST_F(CommunicationSecureManagerTest, TestIAMFlow)
     auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
-    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
-        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    err = mIAMConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager, &mCertProvider.value(),
+        mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
@@ -388,11 +379,8 @@ TEST_F(CommunicationSecureManagerTest, TestSendCMFlow)
     auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
-    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
-        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    err = mIAMConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager, &mCertProvider.value(),
+        mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
@@ -443,11 +431,8 @@ TEST_F(CommunicationSecureManagerTest, TestDownload)
     auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
-    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
-        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    err = mIAMConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager, &mCertProvider.value(),
+        mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());

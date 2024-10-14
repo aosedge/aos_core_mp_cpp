@@ -76,7 +76,7 @@ TEST_F(IamClientTest, GetClientMTLSConfig)
 
 TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 {
-    auto& handler = mClient->GetPublicHandler();
+    auto& handler = mClient->GetPublicNodeClient();
     handler.OnConnected();
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
@@ -159,7 +159,7 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 
 TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 {
-    auto& handler = mClient->GetPublicHandler();
+    auto& handler = mClient->GetPublicNodeClient();
     handler.OnConnected();
 
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());

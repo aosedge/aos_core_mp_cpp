@@ -21,7 +21,6 @@ Error IAMClient::Init(const config::Config& cfg, cryptoutils::CertLoaderItf& cer
 
     mPublicServiceHandler.emplace();
     mPublicNodeClient.emplace();
-    mProtectedNodeClient.emplace();
 
     if (auto err = mPublicServiceHandler->Init(
             cfg, certLoader, cryptoProvider, provisioningMode, std::move(mtlsCredentialsFunc));
@@ -29,17 +28,7 @@ Error IAMClient::Init(const config::Config& cfg, cryptoutils::CertLoaderItf& cer
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mPublicNodeClient->Init(cfg.mIAMConfig, *this, true); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (!provisioningMode) {
-        if (auto err = mProtectedNodeClient->Init(cfg.mIAMConfig, *this, false); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    return ErrorEnum::eNone;
+    return mPublicNodeClient->Init(cfg.mIAMConfig, *this, provisioningMode);
 }
 
 RetWithError<std::shared_ptr<grpc::ChannelCredentials>> IAMClient::GetMTLSConfig(const std::string& certStorage)

@@ -103,7 +103,6 @@ private:
     bool                    mNotifyConnected {};
     std::mutex              mMutex;
     std::string             mUrl;
-    bool                    mPublicServer;
 
     common::utils::Channel<std::vector<uint8_t>> mOutgoingMsgChannel;
     common::utils::Channel<std::vector<uint8_t>> mIncomingMsgChannel;

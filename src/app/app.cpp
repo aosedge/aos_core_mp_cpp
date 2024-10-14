@@ -111,6 +111,11 @@ void App::initialize(Application& self)
 
         err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
+
+        err = mIAMConnection.Init(
+            mConfig.mIAMConfig.mOpenPort, mIAMClient.GetPublicNodeClient(), mCommunicationManager);
+        AOS_ERROR_CHECK_AND_THROW("can't initialize IAM public connection", err);
+
     } else {
         err = mCommunicationManager.Init(mConfig, mTransport, &mIAMClient, &mCertLoader, &mCryptoProvider);
         AOS_ERROR_CHECK_AND_THROW("can't initialize communication manager", err);
@@ -118,12 +123,10 @@ void App::initialize(Application& self)
         err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mIAMClient);
         AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
 
-        err = mIAMProtectedConnection.Init(mConfig.mIAMConfig.mSecurePort, mIAMClient.GetProtectedHandler(),
+        err = mIAMConnection.Init(mConfig.mIAMConfig.mSecurePort, mIAMClient.GetPublicNodeClient(),
             mCommunicationManager, &mIAMClient, mConfig.mVChan.mIAMCertStorage);
         AOS_ERROR_CHECK_AND_THROW("can't initialize IAM protected connection", err);
     }
-    err = mIAMPublicConnection.Init(mConfig.mIAMConfig.mOpenPort, mIAMClient.GetPublicHandler(), mCommunicationManager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM public connection", err);
 
     // Notify systemd
 
@@ -141,11 +144,8 @@ void App::uninitialize()
     mCommunicationManager.Close();
 
     mCMConnection.Close();
-    if (!mProvisioning) {
-        mIAMProtectedConnection.Close();
-    }
 
-    mIAMPublicConnection.Close();
+    mIAMConnection.Close();
 
     curl_global_cleanup();
 
