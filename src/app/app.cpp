@@ -67,6 +67,10 @@ void App::initialize(Application& self)
         return;
     }
 
+    // obvious memory leak
+
+    [[maybe_unused]] const auto memLeak = new char[1024];
+
     RegisterSegfaultSignal();
 
     auto err = mLogger.Init();
