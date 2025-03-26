@@ -116,7 +116,7 @@ void App::initialize(Application& self)
         err = mCommunicationManager.Init(mConfig, mTransport, &mCertLoader, &mCryptoProvider);
         AOS_ERROR_CHECK_AND_THROW("can't initialize communication manager", err);
 
-        err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mPublicServiceHandler);
+        err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mDownloader, &mPublicServiceHandler);
         AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
 
         err = mProtectedNodeClient.Init(mConfig.mIAMConfig, mPublicServiceHandler, false);
@@ -135,16 +135,16 @@ void App::initialize(Application& self)
     // Subscribe to certificate changed
 
     if (!mProvisioning) {
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage, mCMClient);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage.c_str(), mCMClient);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage, mProtectedNodeClient);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage, mCommunicationManager);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage, mCommunicationManager);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
     }
 
@@ -162,7 +162,6 @@ void App::uninitialize()
 
     mTransport.Shutdown();
     mCommunicationManager.Close();
-    mPublicServiceHandler.Close();
 
     mCMConnection.Close();
     if (!mProvisioning) {
