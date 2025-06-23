@@ -7,16 +7,19 @@
 #ifndef APP_HPP_
 #define APP_HPP_
 
+#include <functional>
 #include <optional>
+#include <vector>
 
 #include <Poco/Util/ServerApplication.h>
 
 #include <logger/logger.hpp>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 #include <downloader/downloader.hpp>
 #include <iamclient/publicservicehandler.hpp>
+#include <utils/cleanupmanager.hpp>
 
 #include "cmclient/cmclient.hpp"
 #include "communication/cmconnection.hpp"
@@ -59,12 +62,15 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
+    void Init();
+    void Start();
+
     aos::common::logger::Logger mLogger;
     bool                        mStopProcessing = false;
     bool                        mProvisioning   = false;
     std::string                 mConfigFile;
 
-    aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
+    aos::crypto::DefaultCryptoProvider mCryptoProvider;
     aos::crypto::CertLoader            mCertLoader;
     aos::pkcs11::PKCS11Manager         mPKCS11Manager;
 
@@ -85,6 +91,7 @@ private:
     aos::mp::communication::IAMConnection        mIAMProtectedConnection;
     aos::mp::communication::CMConnection         mCMConnection;
     aos::common::downloader::Downloader          mDownloader;
+    aos::common::utils::CleanupManager           mCleanupManager;
 };
 
 #endif

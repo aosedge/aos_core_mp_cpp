@@ -9,12 +9,11 @@
 #include <optional>
 
 #include <gtest/gtest.h>
-#include <openssl/engine.h>
 
 #include <openssl/err.h>
 #include <openssl/trace.h>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
@@ -119,14 +118,16 @@ protected:
         // OSSL_trace_set_prefix(OSSL_TRACE_CATEGORY_TLS, "BEGIN TRACE[TLS]");
         // OSSL_trace_set_suffix(OSSL_TRACE_CATEGORY_TLS, "END TRACE[TLS]");
 
-        mConfig.mIAMConfig.mOpenPort   = 8081;
-        mConfig.mIAMConfig.mSecurePort = 8080;
-        mConfig.mVChan.mIAMCertStorage = "server";
-        mConfig.mVChan.mSMCertStorage  = "server";
-        mConfig.mDownload.mDownloadDir = "download";
-        mConfig.mImageStoreDir         = "images";
-        mConfig.mCMConfig.mOpenPort    = 30001;
-        mConfig.mCMConfig.mSecurePort  = 30002;
+        mConfig.mIAMConfig.mOpenPort             = 8081;
+        mConfig.mIAMConfig.mSecurePort           = 8080;
+        mConfig.mVChan.mIAMCertStorage           = "server";
+        mConfig.mVChan.mSMCertStorage            = "server";
+        mConfig.mDownload.mDownloadDir           = "download";
+        mConfig.mImageStoreDir                   = "images";
+        mConfig.mCMConfig.mOpenPort              = 30001;
+        mConfig.mCMConfig.mSecurePort            = 30002;
+        mConfig.mLogProviderConfig.mMaxPartSize  = 1024;
+        mConfig.mLogProviderConfig.mMaxPartCount = 10;
 
         mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
 
@@ -217,10 +218,10 @@ protected:
 
         // create certificate from CSR, CA priv key, CA cert
         aos::StaticString<aos::crypto::cPrivKeyPEMLen> intermKey;
-        ASSERT_TRUE(aos::FS::ReadFileToString(intermKeyPath, intermKey).IsNone());
+        ASSERT_TRUE(aos::fs::ReadFileToString(intermKeyPath, intermKey).IsNone());
 
         aos::StaticString<aos::crypto::cCertPEMLen> intermCert;
-        ASSERT_TRUE(aos::FS::ReadFileToString(intermCertPath, intermCert).IsNone());
+        ASSERT_TRUE(aos::fs::ReadFileToString(intermCertPath, intermCert).IsNone());
 
         auto serialArr = aos::Array<uint8_t>(reinterpret_cast<uint8_t*>(&serial), sizeof(serial));
         aos::StaticString<aos::crypto::cCertPEMLen> clientCertChain;
@@ -233,7 +234,7 @@ protected:
         // add CA certificate to the chain
         aos::StaticString<aos::crypto::cCertPEMLen> caCert;
 
-        ASSERT_TRUE(aos::FS::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
+        ASSERT_TRUE(aos::fs::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
         clientCertChain.Append(caCert);
 
         // apply client certificate
@@ -247,15 +248,10 @@ protected:
         std::filesystem::remove_all(mConfig.mDownload.mDownloadDir);
         std::filesystem::remove_all(mConfig.mImageStoreDir);
 
-        if (auto engine = ENGINE_by_id("pkcs11"); engine != nullptr) {
-            // Clear the PKCS#11 engine cache like slots/sessions
-            ENGINE_get_finish_function(engine)(engine);
-        }
-
         std::filesystem::remove_all(SOFTHSM_BASE_MP_DIR "/tokens");
     }
 
-    aos::crypto::MbedTLSCryptoProvider  mCryptoProvider;
+    aos::crypto::DefaultCryptoProvider  mCryptoProvider;
     aos::crypto::CertLoader             mCertLoader;
     aos::iam::certhandler::CertHandler  mCertHandler;
     aos::iam::certhandler::CertInfo     mClientInfo;
@@ -322,6 +318,11 @@ TEST_F(CommunicationSecureManagerTest, TestSecureChannel)
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMOpenConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMSecureConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+
     // connect to IAM
     EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
 
@@ -360,12 +361,11 @@ TEST_F(CommunicationSecureManagerTest, TestSecureChannel)
     EXPECT_TRUE(smOutgoingMessages.ParseFromArray(receivedMsg2.data(), receivedMsg2.size()));
     EXPECT_TRUE(smOutgoingMessages.has_node_config_status());
 
-    mServer->Shutdown();
-    mCommManager->Close();
+    mCommManager->Stop();
     mCommManagerClient->Close();
-    mIAMOpenConnection.Close();
-    mIAMSecureConnection.Close();
-    mCMConnection.Close();
+    mIAMOpenConnection.Stop();
+    mIAMSecureConnection.Stop();
+    mCMConnection.Stop();
     mIAMSecurePipe->Close();
     mCMSecurePipe->Close();
 }
@@ -383,6 +383,9 @@ TEST_F(CommunicationSecureManagerTest, TestIAMFlow)
     err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
         &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMSecureConnection.Start(), aos::ErrorEnum::eNone);
 
     // connect to IAM
     EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
@@ -419,10 +422,9 @@ TEST_F(CommunicationSecureManagerTest, TestIAMFlow)
     EXPECT_TRUE(outgoingMsg.ParseFromArray(receivedMsg.data(), receivedMsg.size()));
     EXPECT_TRUE(outgoingMsg.has_start_provisioning_response());
 
-    mServer->Shutdown();
-    mCommManager->Close();
+    mCommManager->Stop();
     mCommManagerClient->Close();
-    mIAMSecureConnection.Close();
+    mIAMSecureConnection.Stop();
     mIAMSecurePipe->Close();
 }
 
@@ -438,6 +440,9 @@ TEST_F(CommunicationSecureManagerTest, TestSendCMFlow)
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
 
     // connect to CM
     EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
@@ -475,10 +480,9 @@ TEST_F(CommunicationSecureManagerTest, TestSendCMFlow)
     EXPECT_TRUE(smOutgoingMessages.ParseFromArray(receivedMsg2.data(), receivedMsg2.size()));
     EXPECT_TRUE(smOutgoingMessages.has_node_config_status());
 
-    mServer->Shutdown();
-    mCommManager->Close();
+    mCommManager->Stop();
     mCommManagerClient->Close();
-    mCMConnection.Close();
+    mCMConnection.Stop();
     mCMSecurePipe->Close();
 }
 
@@ -494,6 +498,9 @@ TEST_F(CommunicationSecureManagerTest, TestDownload)
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
 
     // connect to CM
     EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
@@ -551,10 +558,71 @@ TEST_F(CommunicationSecureManagerTest, TestDownload)
 
     EXPECT_TRUE(foundService);
 
-    mServer->Shutdown();
-    mCommManager->Close();
+    mCommManager->Stop();
     mCommManagerClient->Close();
-    mCMConnection.Close();
+    mCMConnection.Stop();
+    mCMSecurePipe->Close();
+}
+
+TEST_F(CommunicationSecureManagerTest, TestSendLog)
+{
+    CMConnection mCMConnection {};
+
+    mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
+    mCMSecurePipe.emplace(*mCMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
+
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+
+    // connect to CM
+    EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
+
+    struct LogData {
+        std::string                   mLogId;
+        std::string                   mLogMessage;
+        aos::cloudprotocol::LogStatus mStatus;
+    } testLogData[] = {
+        {"id1", "test log message1\n", aos::cloudprotocol::LogStatusEnum::eOk},
+        {"id1", "test log message2\n", aos::cloudprotocol::LogStatusEnum::eOk},
+        {"id1", "", aos::cloudprotocol::LogStatusEnum::eEmpty},
+    };
+
+    for (const auto& logData : testLogData) {
+        servicemanager::v4::SMOutgoingMessages outgoingMsg;
+        auto&                                  log = *outgoingMsg.mutable_log();
+
+        log.set_log_id(logData.mLogId);
+        log.set_data(logData.mLogMessage);
+        log.set_status(logData.mStatus.ToString().CStr());
+
+        std::vector<uint8_t> messageData(outgoingMsg.ByteSizeLong());
+        EXPECT_TRUE(outgoingMsg.SerializeToArray(messageData.data(), messageData.size()));
+
+        auto protobufHeader = PrepareProtobufHeader(messageData.size());
+        protobufHeader.insert(protobufHeader.end(), messageData.begin(), messageData.end());
+        EXPECT_EQ(mCMSecurePipe->Write(protobufHeader), aos::ErrorEnum::eNone);
+    }
+
+    auto [receivedMsg, errReceive] = CMHandler.GetOutgoingMessages();
+    EXPECT_EQ(errReceive, aos::ErrorEnum::eNone);
+
+    servicemanager::v4::SMOutgoingMessages outgoingMsg;
+    EXPECT_TRUE(outgoingMsg.ParseFromArray(receivedMsg.data(), receivedMsg.size()));
+
+    EXPECT_EQ(outgoingMsg.SMOutgoingMessage_case(), servicemanager::v4::SMOutgoingMessages::kLog);
+    EXPECT_EQ(outgoingMsg.log().log_id(), "id1");
+    EXPECT_EQ(outgoingMsg.log().status(),
+        aos::cloudprotocol::LogStatus(aos::cloudprotocol::LogStatusEnum::eOk).ToString().CStr());
+
+    mCommManager->Stop();
+    mCommManagerClient->Close();
+    mCMConnection.Stop();
     mCMSecurePipe->Close();
 }
 
@@ -572,6 +640,9 @@ TEST_F(CommunicationSecureManagerTest, TestCertChange)
         &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMSecureConnection.Start(), aos::ErrorEnum::eNone);
+
     EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(mCertProvider->IsCertCalled());
@@ -586,9 +657,8 @@ TEST_F(CommunicationSecureManagerTest, TestCertChange)
 
     EXPECT_TRUE(mCertProvider->IsCertCalled());
 
-    mServer->Shutdown();
-    mCommManager->Close();
+    mCommManager->Stop();
     mCommManagerClient->Close();
-    mIAMSecureConnection.Close();
+    mIAMSecureConnection.Stop();
     mIAMSecurePipe->Close();
 }
