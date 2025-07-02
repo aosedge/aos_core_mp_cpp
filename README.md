@@ -2,6 +2,8 @@
 
 # Aos core message proxy
 
+**IMPORTANT**: this repo is archived and moved to https://github.com/aosedge/aos_core_cpp.
+
 ## Cloning Submodules
 
 To download the submodules, use the following command:
