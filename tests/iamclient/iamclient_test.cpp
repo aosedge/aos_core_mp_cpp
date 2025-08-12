@@ -26,8 +26,9 @@ class IamClientTest : public Test {
 public:
     IamClientTest()
     {
-        mConfig.mIAMConfig.mIAMPublicServerURL    = "localhost:8002";
-        mConfig.mIAMConfig.mIAMProtectedServerURL = "localhost:8002";
+        mConfig.mIAMConfig.mIAMPublicServerURL        = "localhost:8002";
+        mConfig.mIAMConfig.mIAMMainPublicServerURL    = "localhost:8002";
+        mConfig.mIAMConfig.mIAMMainProtectedServerURL = "localhost:8002";
     }
 
 protected:
