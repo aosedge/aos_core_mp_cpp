@@ -177,6 +177,8 @@ void CMConnection::RunSecureChannel()
 
             mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mShutdown.load(); });
 
+            LOG_DBG() << "Reconnect CM secure channel";
+
             continue;
         }
 
